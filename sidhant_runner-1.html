@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SIDHANT Runner</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#f2934f;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    touch-action:none;
+  }
+  #gameCanvas {
+    display:block;
+    margin:0 auto;
+    background:#f0a852;
+    touch-action:none;
+  }
+  #ui {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    pointer-events:none;
+    display:flex; justify-content:center;
+  }
+  .hud {
+    position:absolute; top:16px; left:0; right:0;
+    display:flex; flex-direction:column;
+    gap:6px;
+    padding:0 24px;
+    color:#fbf1e4;
+    max-width:480px;
+    margin:0 auto;
+    left:50%; transform:translateX(-50%);
+    width:90%;
+  }
+  .hud-row {
+    display:flex; justify-content:space-between;
+    font-size:20px;
+    font-weight:700;
+    text-shadow:0 2px 5px rgba(0,0,0,0.35);
+  }
+  .progress-wrap {
+    height:9px;
+    background:rgba(0,0,0,0.22);
+    border-radius:6px;
+    overflow:hidden;
+    display:none;
+  }
+  .progress-fill {
+    height:100%;
+    background:#f0c23e;
+    width:0%;
+    border-radius:6px;
+  }
+  #btnExitGame {
+    position:absolute;
+    top:16px; right:16px;
+    z-index:5;
+    width:34px; height:34px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.35);
+    color:#fbf1e4;
+    font-size:16px;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+    pointer-events:auto;
+    box-shadow:0 3px 8px rgba(0,0,0,0.25);
+  }
+  #overlay {
+    position:absolute; top:0; left:0; right:0; bottom:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:safe center;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,210,63,0.25), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(63,214,196,0.22), transparent 50%),
+      rgba(30,18,14,0.86);
+    color:#fbf1e4;
+    text-align:center;
+    pointer-events:auto;
+    padding:24px 18px;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  /* floating ambient blobs, menu-only decoration */
+  .blob-field { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+  .blob {
+    position:absolute; border-radius:50%;
+    filter:blur(2px);
+    opacity:0.35;
+    animation: float 9s ease-in-out infinite;
+  }
+  .blob1 { width:120px; height:120px; background:#f0c23e; top:8%; left:8%; animation-duration:8s; }
+  .blob2 { width:90px; height:90px; background:#38b8a8; bottom:14%; right:10%; animation-duration:10s; animation-delay:1s; }
+  .blob3 { width:60px; height:60px; background:#e85a5a; top:60%; left:14%; animation-duration:7s; animation-delay:0.5s; }
+  .blob4 { width:70px; height:70px; background:#5468c9; top:20%; right:14%; animation-duration:11s; animation-delay:2s; }
+  @keyframes float {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(14px,-22px) scale(1.08); }
+  }
+
+  .menu-card {
+    position:relative;
+    z-index:1;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:26px;
+    padding:34px 30px 28px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow:0 20px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+    max-width:320px;
+    width:100%;
+    animation: cardIn 0.5s cubic-bezier(0.2,0.9,0.3,1.2) both;
+  }
+  .card-close-btn {
+    position:absolute;
+    top:14px; right:14px;
+    z-index:3;
+    width:28px; height:28px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.25);
+    color:#fbf1e4;
+    font-size:14px;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+  }
+  @keyframes cardIn {
+    0% { opacity:0; transform:translateY(18px) scale(0.96); }
+    100% { opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  .mascot {
+    font-size:46px;
+    display:inline-block;
+    animation: bounce 1.6s ease-in-out infinite;
+    filter:drop-shadow(0 8px 10px rgba(0,0,0,0.35));
+  }
+  @keyframes bounce {
+    0%, 100% { transform:translateY(0) rotate(-4deg); }
+    50% { transform:translateY(-10px) rotate(4deg); }
+  }
+
+  .brand-title {
+    font-size:34px;
+    font-weight:900;
+    letter-spacing:2px;
+    margin:6px 0 2px;
+    background:linear-gradient(90deg, #f0c23e, #f2934f 45%, #e85a5a);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:none;
+  }
+  .brand-sub {
+    font-size:12px;
+    letter-spacing:4px;
+    color:#f2dcc0;
+    opacity:0.75;
+    text-transform:uppercase;
+    margin-bottom:16px;
+  }
+
+  #overlay h1 {
+    font-size:36px;
+    margin-bottom:6px;
+    color:#f0c23e;
+    letter-spacing:2px;
+    text-shadow:0 3px 0 #c2670f;
+  }
+  #overlay h2 {
+    font-size:22px;
+    margin-bottom:10px;
+    color:#f0c23e;
+  }
+  #overlay p {
+    font-size:15px;
+    margin:6px 0;
+    color:#f2dcc0;
+    max-width:320px;
+    line-height:1.5;
+  }
+  .score-line {
+    font-size:22px;
+    color:#74c97a;
+    margin:10px 0;
+    font-weight:700;
+  }
+  .stars {
+    font-size:34px;
+    letter-spacing:6px;
+    margin:8px 0;
+  }
+
+  .stat-chip {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.12);
+    border:1px solid rgba(255,255,255,0.2);
+    border-radius:999px;
+    padding:8px 18px;
+    font-size:13px;
+    font-weight:700;
+    color:#f2dcc0;
+    margin-top:16px;
+  }
+  .stat-chip .stat-icon { font-size:15px; }
+  .stat-chip .stat-value { color:#f0c23e; }
+  button {
+    padding:15px 28px;
+    font-size:17px;
+    font-weight:800;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(180deg, #e8735a, #e85a5a);
+    color:#fbf1e4;
+    cursor:pointer;
+    box-shadow:0 5px 0 #b23636, 0 8px 16px rgba(201,58,58,0.35);
+    transition:transform 0.09s ease, box-shadow 0.09s ease;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    letter-spacing:0.5px;
+  }
+  button:active {
+    transform:translateY(4px);
+    box-shadow:0 1px 0 #b23636, 0 2px 6px rgba(201,58,58,0.3);
+  }
+  button.secondary {
+    background:linear-gradient(180deg, #48c4b5, #38b8a8);
+    box-shadow:0 5px 0 #1c8b7c, 0 8px 16px rgba(31,165,147,0.35);
+    color:#0d2b26;
+  }
+  button.secondary:active { box-shadow:0 1px 0 #1c8b7c, 0 2px 6px rgba(31,165,147,0.3); }
+  .btn-icon { font-size:19px; }
+  .menu-buttons {
+    display:flex; flex-direction:column; gap:14px;
+    margin-top:22px;
+    width:100%;
+  }
+  .row-buttons {
+    display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; justify-content:center;
+  }
+  .level-page-label {
+    font-size:12px;
+    color:#f2dcc0;
+    opacity:0.85;
+    margin-bottom:6px;
+    font-weight:600;
+  }
+  .level-pager {
+    position:relative;
+    width:100%;
+    max-width:280px;
+    box-sizing:border-box;
+  }
+  .level-arrow {
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    z-index:2;
+    width:30px; height:30px;
+    border-radius:50%;
+    background:linear-gradient(180deg, #48c4b5, #38b8a8);
+    color:#0d2b26;
+    box-shadow:0 3px 0 #1c8b7c, 0 5px 10px rgba(31,165,147,0.3);
+    font-size:13px;
+    font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+  }
+  .level-arrow#levelPrev { left:-14px; }
+  .level-arrow#levelNext { right:-14px; }
+  .level-arrow:disabled {
+    background:linear-gradient(180deg, #9a9aa4, #83838d);
+    color:#5b5b63;
+    box-shadow:0 3px 0 #64646c, 0 5px 10px rgba(0,0,0,0.2);
+    opacity:0.5;
+  }
+  .level-arrow:disabled:active { transform:translateY(-50%); }
+  .level-viewport {
+    width:100%;
+    overflow:hidden;
+    touch-action:pan-y;
+    box-sizing:border-box;
+  }
+  .level-track {
+    display:flex;
+    width:100%;
+  }
+  .level-page {
+    flex:0 0 100%;
+    min-width:0;
+    display:flex;
+    justify-content:center;
+    box-sizing:border-box;
+  }
+  .level-dots {
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    margin:8px 0 2px;
+  }
+  .level-dot {
+    width:7px; height:7px;
+    border-radius:50%;
+    background:rgba(242,220,192,0.35);
+  }
+  .level-dot.active {
+    background:#f2dcc0;
+  }
+  .level-grid {
+    position:relative; z-index:1;
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:7px;
+    margin:10px 0;
+    width:100%;
+    max-width:220px;
+    box-sizing:border-box;
+  }
+  .shop-grid {
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    margin:10px 0 4px;
+    width:100%;
+    max-width:280px;
+  }
+  .shop-card {
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:12px;
+    padding:6px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .shop-card-equipped {
+    border-color:#74c97a;
+    box-shadow:0 0 0 2px rgba(116,201,122,0.4);
+  }
+  .shop-swatch {
+    width:100%;
+    aspect-ratio:1;
+    border-radius:9px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.25);
+  }
+  .shop-name {
+    font-size:9.5px;
+    font-weight:700;
+    color:#fbf1e4;
+    text-align:center;
+    line-height:1.1;
+  }
+  .shop-action {
+    width:100%;
+    padding:5px 2px;
+    font-size:10px;
+    font-weight:800;
+    border-radius:8px;
+    background:linear-gradient(180deg, #48c4b5, #38b8a8);
+    color:#0d2b26;
+    box-shadow:0 2px 0 #1c8b7c, 0 4px 8px rgba(31,165,147,0.3);
+  }
+  .shop-action.equipped {
+    background:linear-gradient(180deg, #74c97a, #4f9e56);
+    box-shadow:0 3px 0 #3a7f43, 0 5px 10px rgba(58,127,67,0.3);
+    color:#0d2b26;
+  }
+  .shop-action.disabled {
+    background:linear-gradient(180deg, #9a9aa4, #83838d);
+    box-shadow:0 3px 0 #64646c, 0 5px 10px rgba(0,0,0,0.2);
+    color:#5b5b63;
+    opacity:0.7;
+  }
+  .shop-action.disabled:active,
+  .shop-action.equipped:active { transform:none; }
+  .level-btn {
+    position:relative;
+    width:100%;
+    aspect-ratio:1;
+    min-width:0;
+    border-radius:12px;
+    background:linear-gradient(180deg, #48c4b5, #38b8a8);
+    color:#0d2b26;
+    box-shadow:0 4px 0 #1c8b7c, 0 6px 10px rgba(31,165,147,0.3);
+    font-size:15px;
+    font-weight:800;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:2px;
+  }
+  .level-btn .lvl-stars {
+    font-size:8px;
+    letter-spacing:1px;
+    margin-top:2px;
+    color:#0d2b26;
+  }
+  .level-btn.locked {
+    background:linear-gradient(180deg, #9a9aa4, #83838d);
+    color:#5b5b63;
+    box-shadow:0 5px 0 #64646c, 0 8px 14px rgba(0,0,0,0.2);
+    cursor:default;
+  }
+  .level-btn.locked:active { transform:none; box-shadow:0 5px 0 #64646c, 0 8px 14px rgba(0,0,0,0.2); }
+  .back-link {
+    margin-top:14px;
+    background:none;
+    box-shadow:none;
+    color:#f2dcc0;
+    text-decoration:underline;
+    font-size:14px;
+    font-weight:600;
+    padding:6px;
+  }
+  .back-link:active { transform:none; }
+  .hint {
+    position:absolute; bottom:18px; left:0; right:0;
+    text-align:center;
+    color:#f7ecddcc;
+    font-size:13px;
+    pointer-events:none;
+    text-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+<div id="hidden-canvas-wrap" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+  <canvas id="gameCanvas"></canvas>
+  <div id="ui">
+    <div class="hud" id="hud" style="display:none;">
+      <div class="hud-row">
+        <span id="scoreText">Score: 0</span>
+        <span id="levelLabel"></span>
+        <span id="bestText">Best: 0</span>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    <button id="btnExitGame" style="display:none;">&#10005;</button>
+    <div id="overlay"></div>
+    <div class="hint" id="hintText" style="display:none;">Swipe or use A/D, &larr;/&rarr; to switch lanes</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Audio ----------
+  let audioCtx = null;
+  function getAudioCtx(){
+    if (!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  // Unlock audio on first user interaction (mobile autoplay policies)
+  function unlockAudio(){
+    getAudioCtx();
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  }
+  window.addEventListener('pointerdown', unlockAudio, {passive:true});
+  window.addEventListener('touchstart', unlockAudio, {passive:true});
+  window.addEventListener('keydown', unlockAudio);
+
+  function playCoinCrunch(){
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // Short burst of filtered noise = "crunch" texture
+    const bufSize = Math.floor(ctx.sampleRate * 0.09);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++){
+      const decay = 1 - (i / bufSize);
+      data[i] = (Math.random() * 2 - 1) * decay * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(2200, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+    noiseFilter.Q.value = 1.1;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.5, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.1);
+
+    // Quick bright pitched blip layered on top for a "coin" flavor
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1500, now);
+    osc.frequency.exponentialRampToValueAtTime(2200, now + 0.045);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.18, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    osc.connect(oscGain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.08);
+  }
+
+  // ---------- Canvas setup ----------
+  // ---------- Leaderboard API ----------
+  const LEADERBOARD_API = 'https://sidhant-runner-1.onrender.com';
+  let playerName = '';
+  try { playerName = localStorage.getItem('sidhantRunnerName') || ''; } catch(e){ playerName = ''; }
+
+  async function submitScoreToServer(name, scoreVal, mode){
+    try {
+      await fetch(LEADERBOARD_API + '/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, score: scoreVal, mode: mode })
+      });
+    } catch(e){ /* offline or server asleep - fail silently */ }
+  }
+
+  async function fetchLeaderboardFromServer(){
+    try {
+      const res = await fetch(LEADERBOARD_API + '/api/leaderboard');
+      if (!res.ok) throw new Error('bad response');
+      return await res.json();
+    } catch(e){ return null; }
+  }
+
+  function renderLeaderboardScreen(){
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob1"></div>
+        <div class="blob blob3"></div>
+      </div>
+      <div class="menu-card">
+        <div class="mascot" style="font-size:38px;">&#127942;</div>
+        <h1>LEADERBOARD</h1>
+        <div id="lbList" style="width:100%; max-width:280px; margin-top:10px; font-size:14px;">
+          <p style="opacity:0.7;">Loading...</p>
+        </div>
+        <button class="back-link" id="btnBackFromLb">&larr; Main Menu</button>
+      </div>
+    `);
+    document.getElementById('btnBackFromLb').addEventListener('click', renderMainMenu);
+    fetchLeaderboardFromServer().then(list => {
+      const el = document.getElementById('lbList');
+      if (!el) return;
+      if (!list){
+        el.innerHTML = '<p style="opacity:0.7;">Could not load leaderboard. The server may be waking up &mdash; try again in a few seconds.</p>';
+        return;
+      }
+      if (list.length === 0){
+        el.innerHTML = '<p style="opacity:0.7;">No scores yet. Be the first!</p>';
+        return;
+      }
+      let rows = list.map((entry, i) => `
+        <div style="display:flex; justify-content:space-between; padding:6px 10px; ${i%2===0 ? 'background:rgba(255,255,255,0.06);' : ''} border-radius:8px;">
+          <span>${i+1}. ${(entry.name || 'Player').slice(0,12)}</span>
+          <span style="font-weight:700;">${entry.score}</span>
+        </div>`).join('');
+      el.innerHTML = rows;
+    });
+  }
+
+  function promptNameAndSubmit(scoreVal, mode){
+    if (playerName){
+      submitScoreToServer(playerName, scoreVal, mode);
+      return;
+    }
+    const entered = window.prompt('New score! Enter your name for the leaderboard:', '');
+    if (entered && entered.trim()){
+      playerName = entered.trim().slice(0, 12);
+      try { localStorage.setItem('sidhantRunnerName', playerName); } catch(e){}
+      submitScoreToServer(playerName, scoreVal, mode);
+    }
+  }
+
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resize(){
+    const maxW = Math.min(window.innerWidth, 480);
+    const maxH = window.innerHeight;
+    canvas.width = maxW;
+    canvas.height = maxH;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // ---------- Matte vibrant color palette ----------
+  const PALETTE = {
+    bg1: '#f2934f',
+    bg2: '#e8703f',
+    road: '#000000',
+    roadEdge: '#c96f28',
+    laneLine: '#f5e3b8',
+    player: '#38b8a8',
+    playerDark: '#1c8b7c',
+    obstacle1: '#e85a5a',
+    obstacle2: '#b23636',
+    obstacle3: '#5468c9',
+    coin: '#f0c23e',
+    coinDark: '#c2901c',
+    textLight: '#fbf1e4'
+  };
+
+  const TOTAL_LEVELS = 50;
+
+  const SKINS = [
+    { id:'default',  name:'Teal',     price:0,   body:'#38b8a8', dark:'#1c8b7c' },
+    { id:'coral',    name:'Coral',    price:175, body:'#e85a5a', dark:'#b23636' },
+    { id:'violet',   name:'Violet',   price:263, body:'#8b6fd6', dark:'#5f47a8' },
+    { id:'gold',     name:'Gold',     price:350, body:'#f0c23e', dark:'#c2901c' },
+    { id:'mint',     name:'Mint',     price:350, body:'#6fe0b0', dark:'#2fae7f' },
+    { id:'sky',      name:'Sky',      price:525, body:'#5ab4e8', dark:'#2d7fb3' },
+    { id:'rose',     name:'Rose',     price:525, body:'#f18bb0', dark:'#c14f7d' },
+    { id:'obsidian', name:'Obsidian', price:700, body:'#4a4a55', dark:'#26262e' }
+  ];
+
+  function applySkin(){
+    const skin = SKINS.find(s => s.id === progress.equippedSkin) || SKINS[0];
+    PALETTE.player = skin.body;
+    PALETTE.playerDark = skin.dark;
+  }
+
+  // ---------- Progress persistence ----------
+  function loadProgress(){
+    let p = { unlocked: 1, stars: {}, coins: 0, ownedSkins: ['default'], equippedSkin: 'default' };
+    try {
+      const raw = localStorage.getItem('sidhantRunnerProgress');
+      if (raw) p = Object.assign(p, JSON.parse(raw));
+    } catch(e){}
+    return p;
+  }
+  function saveProgress(){
+    try { localStorage.setItem('sidhantRunnerProgress', JSON.stringify(progress)); } catch(e){}
+  }
+  let progress = loadProgress();
+  applySkin();
+
+  let bestEndless = 0;
+  try { bestEndless = parseInt(localStorage.getItem('matteRunnerBest') || '0', 10) || 0; } catch(e) { bestEndless = 0; }
+
+  function getLevelConfig(n){
+    const t = (n - 1) / (TOTAL_LEVELS - 1);
+    return {
+      baseSpeed: 5 + t * 7,        // 5 -> 12
+      maxSpeed: 9 + t * 9,         // 9 -> 18
+      spawnInterval: 76 - t * 44,  // +25% more obstacles (was 95 -> 40)
+      targetDistance: Math.round((700 + (n - 1) * 90) * 1.66) // +25% more on top of the earlier +33% (total +66%), spread across 50 levels
+    };
+  }
+
+  // ---------- Game state ----------
+  let lanes = 3;
+  let laneWidth, laneX = [];
+  let playerLane = 1;
+  let playerTargetX = 0;
+  let playerX = 0;
+  let playerY = 0;
+  let playerW = 44, playerH = 62;
+  let playerBobT = 0;
+  let playerTilt = 0;
+
+  let obstacles = [];
+  let coins = [];
+  let particles = [];
+
+  let gameMode = 'endless'; // 'endless' | 'level'
+  let currentLevel = 1;
+  let levelConfig = null;
+  let coinsCollected = 0;
+
+  let speed = 6.2;
+  let baseSpeed = 6.2;
+  let maxSpeed = 15;
+  let distance = 0;
+  let score = 0;
+
+  let spawnTimer = 0;
+  let spawnInterval = 68;
+  let coinTimer = 0;
+
+  let running = false;
+  let gameOver = false;
+  let animFrame = null;
+
+  const hud = document.getElementById('hud');
+  const scoreText = document.getElementById('scoreText');
+  const bestText = document.getElementById('bestText');
+  const levelLabel = document.getElementById('levelLabel');
+  const overlay = document.getElementById('overlay');
+  const hintText = document.getElementById('hintText');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const btnExitGame = document.getElementById('btnExitGame');
+
+  function computeLanes(){
+    laneWidth = canvas.width / lanes;
+    laneX = [];
+    for (let i = 0; i < lanes; i++){
+      laneX.push(laneWidth * i + laneWidth/2);
+    }
+    playerY = canvas.height - 130;
+    playerTargetX = laneX[playerLane];
+    if (!running){
+      playerX = playerTargetX;
+    }
+  }
+  computeLanes();
+  window.addEventListener('resize', computeLanes);
+
+  // ---------- Input ----------
+  function moveLeft(){
+    if (!running || gameOver) return;
+    if (playerLane > 0){
+      playerLane--;
+      playerTargetX = laneX[playerLane];
+    }
+  }
+  function moveRight(){
+    if (!running || gameOver) return;
+    if (playerLane < lanes - 1){
+      playerLane++;
+      playerTargetX = laneX[playerLane];
+    }
+  }
+
+  window.addEventListener('keydown', function(e){
+    const k = e.key.toLowerCase();
+    if (k === 'a' || k === 'arrowleft'){
+      moveLeft();
+      e.preventDefault();
+    } else if (k === 'd' || k === 'arrowright'){
+      moveRight();
+      e.preventDefault();
+    }
+  }, {passive:false});
+
+  let dragStartX = null, dragStartY = null, dragStartTime = 0;
+  let dragHandled = false, activePointerId = null;
+  const SWIPE_THRESHOLD = 18;
+
+  canvas.style.touchAction = 'none';
+
+  canvas.addEventListener('pointerdown', function(e){
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    activePointerId = e.pointerId;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragStartTime = Date.now();
+    dragHandled = false;
+    if (canvas.setPointerCapture){
+      try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+    }
+    e.preventDefault();
+  }, {passive:false});
+
+  canvas.addEventListener('pointermove', function(e){
+    if (dragStartX === null || dragHandled) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD){
+      dragHandled = true;
+      if (dx > 0) moveRight(); else moveLeft();
+    }
+  }, {passive:true});
+
+  function endDrag(e){
+    if (dragStartX === null){ dragHandled = false; activePointerId = null; return; }
+    if (activePointerId !== null && e.pointerId !== undefined && e.pointerId !== activePointerId){ return; }
+    if (!dragHandled){
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      const dt = Date.now() - dragStartTime;
+      if (dt < 350 && Math.abs(dx) < 15 && Math.abs(dy) < 15){
+        const rect = canvas.getBoundingClientRect();
+        const tapX = e.clientX - rect.left;
+        if (tapX < rect.width / 2) moveLeft(); else moveRight();
+      }
+    }
+    dragStartX = null; dragStartY = null; dragHandled = false; activePointerId = null;
+  }
+
+  canvas.addEventListener('pointerup', endDrag, {passive:true});
+  canvas.addEventListener('pointercancel', endDrag, {passive:true});
+
+  // ---- Native touch fallback ONLY for browsers without Pointer Events support ----
+  // (Attaching both pointer AND touch listeners on the same device causes every
+  // tap/swipe to fire twice - e.g. a single right swipe jumping 2 lanes.)
+  if (!window.PointerEvent){
+    let touchActive = false;
+    canvas.addEventListener('touchstart', function(e){
+      if (touchActive) return;
+      touchActive = true;
+      const t = e.changedTouches[0];
+      dragStartX = t.clientX;
+      dragStartY = t.clientY;
+      dragStartTime = Date.now();
+      dragHandled = false;
+    }, {passive:true});
+
+    canvas.addEventListener('touchmove', function(e){
+      if (!touchActive || dragStartX === null || dragHandled) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - dragStartX;
+      const dy = t.clientY - dragStartY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD){
+        dragHandled = true;
+        if (dx > 0) moveRight(); else moveLeft();
+      }
+    }, {passive:true});
+
+    canvas.addEventListener('touchend', function(e){
+      if (!touchActive) return;
+      touchActive = false;
+      const t = e.changedTouches[0];
+      if (!dragHandled && dragStartX !== null){
+        const dx = t.clientX - dragStartX;
+        const dy = t.clientY - dragStartY;
+        const dt = Date.now() - dragStartTime;
+        if (dt < 350 && Math.abs(dx) < 15 && Math.abs(dy) < 15){
+          const rect = canvas.getBoundingClientRect();
+          const tapX = t.clientX - rect.left;
+          if (tapX < rect.width / 2) moveLeft(); else moveRight();
+        }
+      }
+      dragStartX = null; dragStartY = null; dragHandled = false;
+    }, {passive:true});
+  }
+
+  // ---------- Helpers ----------
+  function rand(min, max){ return Math.random() * (max - min) + min; }
+  function randInt(min, max){ return Math.floor(rand(min, max+1)); }
+
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- Entities ----------
+  function spawnObstacle(){
+    const lane = randInt(0, lanes-1);
+    const type = Math.random();
+    let w = 46, h = 46, color = PALETTE.obstacle1, shape = 'box';
+    if (type < 0.34){
+      color = PALETTE.obstacle1; shape='box'; w=48; h=48;
+    } else if (type < 0.67){
+      color = PALETTE.obstacle2; shape='barrier'; w=laneWidth*0.7; h=26;
+    } else {
+      color = PALETTE.obstacle3; shape='spike'; w=44; h=44;
+    }
+    obstacles.push({ lane, x: laneX[lane], y: -80, w, h, color, shape });
+  }
+
+  function spawnCoin(){
+    const lane = randInt(0, lanes-1);
+    coins.push({ lane, x: laneX[lane], y: -60, r: 14, bob: Math.random()*Math.PI*2 });
+  }
+
+  function spawnParticle(x, y, color){
+    for (let i=0;i<10;i++){
+      particles.push({
+        x, y,
+        vx: rand(-3,3), vy: rand(-5,-1),
+        life: 30, maxLife: 30,
+        color
+      });
+    }
+  }
+
+  // ---------- Screens / Overlay rendering ----------
+  function showOverlay(html){
+    overlay.innerHTML = html;
+    overlay.style.display = 'flex';
+    hud.style.display = 'none';
+    hintText.style.display = 'none';
+    btnExitGame.style.display = 'none';
+  }
+
+  function hideOverlay(){
+    overlay.style.display = 'none';
+    overlay.innerHTML = '';
+    hud.style.display = 'flex';
+    hintText.style.display = 'block';
+    btnExitGame.style.display = 'flex';
+  }
+
+  function renderMainMenu(){
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+        <div class="blob blob3"></div>
+        <div class="blob blob4"></div>
+      </div>
+      <div class="menu-card">
+        <div class="mascot">&#127939;</div>
+        <div class="brand-title">SIDHANT</div>
+        <div class="brand-sub">Runner</div>
+        <p style="font-size:13px; opacity:0.85;">Swipe left / right to dodge.<br>On PC use A/D or &larr;/&rarr; keys.</p>
+        <div class="menu-buttons">
+          <button id="btnEndless"><span class="btn-icon">&#9889;</span> Endless Run</button>
+          <button class="secondary" id="btnLevels"><span class="btn-icon">&#127919;</span> Levels</button>
+          <button class="secondary" id="btnShop"><span class="btn-icon">&#128722;</span> Shop</button>
+          <button class="secondary" id="btnLeaderboard"><span class="btn-icon">&#127942;</span> Leaderboard</button>
+        </div>
+        <div class="row-buttons" style="margin-top:16px;">
+          <div class="stat-chip" style="margin-top:0;"><span class="stat-icon">&#127942;</span>Endless Best: <span class="stat-value">${bestEndless}</span></div>
+          <div class="stat-chip" style="margin-top:0;"><span class="stat-icon">&#128176;</span><span class="stat-value">${progress.coins || 0}</span></div>
+        </div>
+      </div>
+    `);
+    document.getElementById('btnEndless').addEventListener('click', () => startGame('endless'));
+    document.getElementById('btnLevels').addEventListener('click', renderLevelSelect);
+    document.getElementById('btnShop').addEventListener('click', () => renderShop());
+    document.getElementById('btnLeaderboard').addEventListener('click', renderLeaderboardScreen);
+  }
+
+  const LEVELS_PER_PAGE = 25;
+  const TOTAL_PAGES = Math.ceil(TOTAL_LEVELS / LEVELS_PER_PAGE);
+  let levelPage = 0;
+
+  function renderLevelSelect(page){
+    if (typeof page === 'number'){
+      levelPage = Math.max(0, Math.min(TOTAL_PAGES - 1, page));
+    }
+    let pagesHtml = '';
+    for (let p = 0; p < TOTAL_PAGES; p++){
+      const start = p * LEVELS_PER_PAGE + 1;
+      const end = Math.min(TOTAL_LEVELS, start + LEVELS_PER_PAGE - 1);
+      let grid = '';
+      for (let i = start; i <= end; i++){
+        const locked = i > progress.unlocked;
+        const stars = progress.stars[i] || 0;
+        const starDisplay = stars > 0 ? '&#9733;'.repeat(stars) + '&#9734;'.repeat(3-stars) : '';
+        grid += `<button class="level-btn ${locked ? 'locked' : ''}" data-level="${i}" ${locked ? 'disabled' : ''}>
+          ${locked ? '&#128274;' : i}
+          <span class="lvl-stars">${starDisplay}</span>
+        </button>`;
+      }
+      pagesHtml += `<div class="level-page" data-page="${p}"><div class="level-grid">${grid}</div></div>`;
+    }
+    let dots = '';
+    for (let p = 0; p < TOTAL_PAGES; p++){
+      dots += `<span class="level-dot ${p === levelPage ? 'active' : ''}" data-page="${p}"></span>`;
+    }
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+        <div class="blob blob3"></div>
+        <div class="blob blob4"></div>
+      </div>
+      <div class="menu-card" style="max-width:360px; padding:22px 26px 18px;">
+        <button class="card-close-btn" id="btnCloseLevels" aria-label="Exit to menu">&#10005;</button>
+        <div class="brand-sub" style="margin-bottom:4px;">Choose your run</div>
+        <h2 style="margin-bottom:4px;">SELECT LEVEL</h2>
+        <div class="level-page-label" id="levelPageLabel"></div>
+        <div class="level-pager">
+          <button class="level-arrow" id="levelPrev" aria-label="Previous levels">&#10094;</button>
+          <div class="level-viewport" id="levelViewport">
+            <div class="level-track" id="levelTrack">${pagesHtml}</div>
+          </div>
+          <button class="level-arrow" id="levelNext" aria-label="Next levels">&#10095;</button>
+        </div>
+        <div class="level-dots" id="levelDots">${dots}</div>
+        <button class="back-link" id="btnBackMenu">&larr; Back to Menu</button>
+      </div>
+    `);
+
+    const track = document.getElementById('levelTrack');
+    const viewport = document.getElementById('levelViewport');
+    const pageLabel = document.getElementById('levelPageLabel');
+
+    function updatePageLabel(){
+      const start = levelPage * LEVELS_PER_PAGE + 1;
+      const end = Math.min(TOTAL_LEVELS, start + LEVELS_PER_PAGE - 1);
+      pageLabel.textContent = `Levels ${start}-${end}`;
+    }
+
+    function goToPage(p, animate){
+      levelPage = Math.max(0, Math.min(TOTAL_PAGES - 1, p));
+      track.style.transition = animate === false ? 'none' : 'transform 0.28s ease';
+      track.style.transform = `translateX(-${levelPage * 100}%)`;
+      document.querySelectorAll('.level-dot').forEach(d => {
+        d.classList.toggle('active', parseInt(d.getAttribute('data-page'), 10) === levelPage);
+      });
+      document.getElementById('levelPrev').disabled = levelPage === 0;
+      document.getElementById('levelNext').disabled = levelPage === TOTAL_PAGES - 1;
+      updatePageLabel();
+    }
+
+    document.querySelectorAll('.level-btn:not(.locked)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lvl = parseInt(btn.getAttribute('data-level'), 10);
+        startGame('level', lvl);
+      });
+    });
+    document.getElementById('btnBackMenu').addEventListener('click', renderMainMenu);
+    document.getElementById('btnCloseLevels').addEventListener('click', renderMainMenu);
+    document.getElementById('levelPrev').addEventListener('click', () => goToPage(levelPage - 1));
+    document.getElementById('levelNext').addEventListener('click', () => goToPage(levelPage + 1));
+    document.querySelectorAll('.level-dot').forEach(dot => {
+      dot.addEventListener('click', () => goToPage(parseInt(dot.getAttribute('data-page'), 10)));
+    });
+
+    // Swipe support
+    let touchStartX = 0, touchDeltaX = 0, touching = false;
+    viewport.addEventListener('touchstart', (e) => {
+      touching = true;
+      touchStartX = e.touches[0].clientX;
+      touchDeltaX = 0;
+      track.style.transition = 'none';
+    }, { passive: true });
+    viewport.addEventListener('touchmove', (e) => {
+      if (!touching) return;
+      touchDeltaX = e.touches[0].clientX - touchStartX;
+      const pct = (touchDeltaX / viewport.clientWidth) * 100;
+      track.style.transform = `translateX(calc(-${levelPage * 100}% + ${pct}%))`;
+    }, { passive: true });
+    viewport.addEventListener('touchend', () => {
+      if (!touching) return;
+      touching = false;
+      const threshold = viewport.clientWidth * 0.18;
+      if (touchDeltaX < -threshold && levelPage < TOTAL_PAGES - 1){
+        goToPage(levelPage + 1);
+      } else if (touchDeltaX > threshold && levelPage > 0){
+        goToPage(levelPage - 1);
+      } else {
+        goToPage(levelPage);
+      }
+    });
+
+    goToPage(levelPage, false);
+  }
+
+  function renderShop(){
+    let cards = '';
+    SKINS.forEach(skin => {
+      const owned = progress.ownedSkins.indexOf(skin.id) !== -1;
+      const equipped = progress.equippedSkin === skin.id;
+      let actionHtml;
+      if (equipped){
+        actionHtml = `<button class="shop-action equipped" disabled>Equipped</button>`;
+      } else if (owned){
+        actionHtml = `<button class="shop-action" data-action="equip" data-id="${skin.id}">Equip</button>`;
+      } else {
+        const affordable = (progress.coins || 0) >= skin.price;
+        actionHtml = `<button class="shop-action ${affordable ? '' : 'disabled'}" data-action="buy" data-id="${skin.id}" ${affordable ? '' : 'disabled'}>&#128176; ${skin.price}</button>`;
+      }
+      cards += `<div class="shop-card ${equipped ? 'shop-card-equipped' : ''}">
+        <div class="shop-swatch" style="background:linear-gradient(180deg, ${skin.body}, ${skin.dark});"></div>
+        <div class="shop-name">${skin.name}</div>
+        ${actionHtml}
+      </div>`;
+    });
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+        <div class="blob blob3"></div>
+        <div class="blob blob4"></div>
+      </div>
+      <div class="menu-card" style="max-width:360px; padding:22px 26px 18px;">
+        <button class="card-close-btn" id="btnCloseShop" aria-label="Exit to menu">&#10005;</button>
+        <div class="brand-sub" style="margin-bottom:4px;">Gear up</div>
+        <h2 style="margin-bottom:6px;">SHOP</h2>
+        <div class="stat-chip" style="margin-top:0; margin-bottom:10px;"><span class="stat-icon">&#128176;</span><span class="stat-value">${progress.coins || 0}</span> coins</div>
+        <div class="shop-grid">${cards}</div>
+        <button class="back-link" id="btnBackMenuShop">&larr; Back to Menu</button>
+      </div>
+    `);
+    document.querySelectorAll('.shop-action[data-action="buy"]:not(.disabled)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const skin = SKINS.find(s => s.id === id);
+        if (!skin) return;
+        if ((progress.coins || 0) < skin.price) return;
+        progress.coins -= skin.price;
+        progress.ownedSkins.push(id);
+        progress.equippedSkin = id;
+        applySkin();
+        saveProgress();
+        renderShop();
+      });
+    });
+    document.querySelectorAll('.shop-action[data-action="equip"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        progress.equippedSkin = id;
+        applySkin();
+        saveProgress();
+        renderShop();
+      });
+    });
+    document.getElementById('btnBackMenuShop').addEventListener('click', renderMainMenu);
+    document.getElementById('btnCloseShop').addEventListener('click', renderMainMenu);
+  }
+
+  function renderGameOverOverlay(){
+    let extra = '';
+    if (gameMode === 'level'){
+      extra = `<p style="margin-top:4px;">Level ${currentLevel} &mdash; reach ${levelConfig.targetDistance}m to clear it.</p>
+        <div class="row-buttons">
+          <button id="btnRetry"><span class="btn-icon">&#128257;</span> Retry</button>
+          <button class="secondary" id="btnLevelSelect"><span class="btn-icon">&#127919;</span> Levels</button>
+        </div>`;
+    } else {
+      extra = `<div class="row-buttons">
+          <button id="btnRetry"><span class="btn-icon">&#128257;</span> Run Again</button>
+          <button class="secondary" id="btnMenu2"><span class="btn-icon">&#127968;</span> Menu</button>
+        </div>`;
+    }
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob1"></div>
+        <div class="blob blob3"></div>
+      </div>
+      <div class="menu-card">
+        <div class="mascot" style="font-size:38px;">&#128165;</div>
+        <h1>RUN OVER</h1>
+        <div class="score-line">Score: ${score}${gameMode==='endless' && score >= bestEndless ? '  &bull;  New Best!' : ''}</div>
+        <div class="stat-chip"><span class="stat-icon">&#128176;</span>+${coinsCollected} coins &bull; <span class="stat-value">${progress.coins}</span> total</div>
+        ${extra}
+        <button class="back-link" id="btnBackMenu2">&larr; Main Menu</button>
+      </div>
+    `);
+    const retryBtn = document.getElementById('btnRetry');
+    if (retryBtn) retryBtn.addEventListener('click', () => {
+      if (gameMode === 'level') startGame('level', currentLevel);
+      else startGame('endless');
+    });
+    const lvlSelBtn = document.getElementById('btnLevelSelect');
+    if (lvlSelBtn) lvlSelBtn.addEventListener('click', renderLevelSelect);
+    const menu2Btn = document.getElementById('btnMenu2');
+    if (menu2Btn) menu2Btn.addEventListener('click', renderMainMenu);
+    document.getElementById('btnBackMenu2').addEventListener('click', renderMainMenu);
+  }
+
+  function renderLevelCompleteOverlay(stars){
+    const isLast = currentLevel >= TOTAL_LEVELS;
+    const starStr = '&#9733;'.repeat(stars) + '&#9734;'.repeat(3-stars);
+    showOverlay(`
+      <div class="blob-field">
+        <div class="blob blob2"></div>
+        <div class="blob blob4"></div>
+      </div>
+      <div class="menu-card">
+        <div class="mascot" style="font-size:38px;">&#127881;</div>
+        <h1 style="color:#74c97a; text-shadow:0 3px 0 #3a7f43;">LEVEL CLEAR!</h1>
+        <div class="stars" style="color:#f0c23e;">${starStr}</div>
+        <div class="score-line">Score: ${score}</div>
+        <div class="stat-chip"><span class="stat-icon">&#128176;</span>+${coinsCollected} coins &bull; <span class="stat-value">${progress.coins}</span> total</div>
+        <div class="row-buttons">
+          ${!isLast ? `<button id="btnNextLevel"><span class="btn-icon">&#9654;</span> Next Level</button>` : `<p style="max-width:260px;">You cleared all ${TOTAL_LEVELS} levels! &#127881;</p>`}
+          <button class="secondary" id="btnLevelSelect2"><span class="btn-icon">&#127919;</span> Levels</button>
+        </div>
+        <button class="back-link" id="btnBackMenu3">&larr; Main Menu</button>
+      </div>
+    `);
+    const nextBtn = document.getElementById('btnNextLevel');
+    if (nextBtn) nextBtn.addEventListener('click', () => startGame('level', currentLevel + 1));
+    document.getElementById('btnLevelSelect2').addEventListener('click', renderLevelSelect);
+    document.getElementById('btnBackMenu3').addEventListener('click', renderMainMenu);
+  }
+
+  // ---------- Game control ----------
+  function startGame(mode, level){
+    gameMode = mode;
+    currentLevel = level || 1;
+
+    lanes = 3;
+    playerLane = 1;
+    computeLanes();
+    playerX = playerTargetX;
+    playerTilt = 0;
+    obstacles = [];
+    coins = [];
+    particles = [];
+    distance = 0;
+    score = 0;
+    coinsCollected = 0;
+    spawnTimer = 0;
+    coinTimer = 40;
+
+    if (gameMode === 'level'){
+      levelConfig = getLevelConfig(currentLevel);
+      baseSpeed = levelConfig.baseSpeed;
+      maxSpeed = levelConfig.maxSpeed;
+      spawnInterval = levelConfig.spawnInterval;
+      levelLabel.textContent = 'Level ' + currentLevel;
+      progressWrap.style.display = 'block';
+      progressFill.style.width = '0%';
+    } else {
+      baseSpeed = 6.2;
+      maxSpeed = 15;
+      spawnInterval = 68;
+      levelLabel.textContent = '';
+      progressWrap.style.display = 'none';
+    }
+    speed = baseSpeed;
+
+    running = true;
+    gameOver = false;
+    hideOverlay();
+    updateHUD();
+    if (animFrame) cancelAnimationFrame(animFrame);
+    lastTime = performance.now();
+    animFrame = requestAnimationFrame(loop);
+  }
+
+  function endGame(reason){
+    running = false;
+    gameOver = true;
+    if (animFrame){ cancelAnimationFrame(animFrame); animFrame = null; }
+
+    progress.coins = (progress.coins || 0) + coinsCollected;
+    saveProgress();
+
+    if (score > 0) promptNameAndSubmit(score, gameMode);
+
+    if (gameMode === 'endless'){
+      if (score > bestEndless){
+        bestEndless = score;
+        try { localStorage.setItem('matteRunnerBest', String(bestEndless)); } catch(e){}
+      }
+      renderGameOverOverlay();
+      return;
+    }
+
+    // level mode
+    if (reason === 'complete'){
+      const t1 = Math.floor(levelConfig.targetDistance / 400);
+      const t2 = Math.floor(levelConfig.targetDistance / 250);
+      let stars = 1;
+      if (coinsCollected >= t2) stars = 3;
+      else if (coinsCollected >= t1) stars = 2;
+
+      const prevStars = progress.stars[currentLevel] || 0;
+      progress.stars[currentLevel] = Math.max(prevStars, stars);
+      progress.unlocked = Math.max(progress.unlocked, Math.min(TOTAL_LEVELS, currentLevel + 1));
+      saveProgress();
+      renderLevelCompleteOverlay(stars);
+    } else {
+      renderGameOverOverlay();
+    }
+  }
+
+  function quitGame(){
+    if (!running && !gameOver) return;
+    running = false;
+    gameOver = false;
+    if (animFrame){ cancelAnimationFrame(animFrame); animFrame = null; }
+    renderMainMenu();
+  }
+  btnExitGame.addEventListener('click', quitGame);
+
+  function updateHUD(){
+    scoreText.textContent = 'Score: ' + score;
+    if (gameMode === 'endless'){
+      bestText.textContent = 'Best: ' + bestEndless;
+    } else {
+      bestText.textContent = Math.min(distance, levelConfig.targetDistance).toFixed(0) + '/' + levelConfig.targetDistance + 'm';
+      const pct = Math.min(100, (distance / levelConfig.targetDistance) * 100);
+      progressFill.style.width = pct + '%';
+    }
+  }
+
+  // ---------- Collision ----------
+  function checkCollision(px, py, pw, ph, ox, oy, ow, oh){
+    return (px - pw/2 < ox + ow/2) &&
+           (px + pw/2 > ox - ow/2) &&
+           (py - ph/2 < oy + oh/2) &&
+           (py + ph/2 > oy - oh/2);
+  }
+
+  // ---------- Update ----------
+  let lastTime = 0;
+  function update(dt){
+    if (!running) return;
+
+    speed = Math.min(maxSpeed, baseSpeed + distance * 0.0006);
+    const timeScale = dt / 16.6667;
+    const frameSpeed = speed * timeScale;
+
+    distance += frameSpeed;
+    score = Math.floor(distance / 10);
+
+    if (gameMode === 'level' && distance >= levelConfig.targetDistance){
+      distance = levelConfig.targetDistance;
+      score = Math.floor(distance / 10);
+      updateHUD();
+      endGame('complete');
+      return;
+    }
+
+    const smoothTime = 0.085;
+    const moveFactor = 1 - Math.exp(-(dt/1000) / smoothTime);
+    playerX += (playerTargetX - playerX) * moveFactor;
+    playerBobT += dt * 0.01;
+
+    const moveDelta = playerTargetX - playerX;
+    const targetTilt = Math.max(-0.28, Math.min(0.28, moveDelta * 0.012));
+    playerTilt += (targetTilt - playerTilt) * Math.min(1, dt / 80);
+
+    spawnTimer++;
+    const dynInterval = Math.max(26, spawnInterval - distance*0.01);
+    if (spawnTimer > dynInterval){
+      spawnTimer = 0;
+      spawnObstacle();
+    }
+
+    coinTimer++;
+    if (coinTimer > 19){
+      coinTimer = 0;
+      if (Math.random() < 0.9) spawnCoin();
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--){
+      const o = obstacles[i];
+      o.y += frameSpeed;
+      if (o.y > canvas.height + 100){
+        obstacles.splice(i,1);
+        continue;
+      }
+      if (checkCollision(playerX, playerY, playerW*0.7, playerH*0.8, o.x, o.y, o.w*0.8, o.h*0.8)){
+        spawnParticle(playerX, playerY, PALETTE.obstacle1);
+        endGame('crash');
+        return;
+      }
+    }
+
+    for (let i = coins.length - 1; i >= 0; i--){
+      const c = coins[i];
+      c.y += frameSpeed;
+      c.bob += 0.15 * timeScale;
+      if (c.y > canvas.height + 60){
+        coins.splice(i,1);
+        continue;
+      }
+      if (checkCollision(playerX, playerY, playerW*0.8, playerH*0.8, c.x, c.y, c.r*2, c.r*2)){
+        score += 5;
+        coinsCollected++;
+        spawnParticle(c.x, c.y, PALETTE.coin);
+        playCoinCrunch();
+        coins.splice(i,1);
+      }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += 0.2;
+      p.life--;
+      if (p.life <= 0) particles.splice(i,1);
+    }
+
+    updateHUD();
+  }
+
+  // ---------- Draw ----------
+  let roadScrollY = 0;
+  function draw(){
+    const w = canvas.width, h = canvas.height;
+
+    const g = ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0, PALETTE.bg1);
+    g.addColorStop(1, PALETTE.bg2);
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,w,h);
+
+    ctx.fillStyle = PALETTE.road;
+    ctx.fillRect(0,0,w,h);
+
+    ctx.fillStyle = PALETTE.roadEdge;
+    ctx.fillRect(0,0, w*0.03, h);
+    ctx.fillRect(w - w*0.03, 0, w*0.03, h);
+
+    roadScrollY += speed;
+    if (roadScrollY > 60) roadScrollY = 0;
+    ctx.strokeStyle = PALETTE.laneLine;
+    ctx.lineWidth = 4;
+    ctx.setLineDash([22, 20]);
+    for (let i = 1; i < lanes; i++){
+      const x = laneWidth * i;
+      ctx.beginPath();
+      ctx.moveTo(x, -60 + roadScrollY);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    coins.forEach(c => {
+      const bobOffset = Math.sin(c.bob) * 4;
+      ctx.save();
+      ctx.translate(c.x, c.y + bobOffset);
+      ctx.beginPath();
+      ctx.arc(0,0,c.r,0,Math.PI*2);
+      ctx.fillStyle = PALETTE.coin;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0,0,c.r*0.55,0,Math.PI*2);
+      ctx.fillStyle = PALETTE.coinDark;
+      ctx.fill();
+      ctx.restore();
+    });
+
+    obstacles.forEach(o => {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      if (o.shape === 'box'){
+        roundRect(ctx, -o.w/2, -o.h/2, o.w, o.h, 8);
+        ctx.fillStyle = o.color;
+        ctx.fill();
+        roundRect(ctx, -o.w/2, -o.h/2, o.w, o.h*0.4, 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fill();
+      } else if (o.shape === 'barrier'){
+        roundRect(ctx, -o.w/2, -o.h/2, o.w, o.h, 6);
+        ctx.fillStyle = o.color;
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        for (let sx = -o.w/2+8; sx < o.w/2; sx += 18){
+          ctx.fillRect(sx, -o.h/2, 4, o.h);
+        }
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(0, -o.h/2);
+        ctx.lineTo(o.w/2, o.h/2);
+        ctx.lineTo(-o.w/2, o.h/2);
+        ctx.closePath();
+        ctx.fillStyle = o.color;
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    particles.forEach(p => {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    if (running || gameOver){
+      const bob = Math.sin(playerBobT) * 3;
+      ctx.save();
+      ctx.translate(playerX, playerY + bob);
+      ctx.rotate(playerTilt);
+
+      ctx.beginPath();
+      ctx.ellipse(0, playerH/2 + 6, playerW*0.45, 8, 0, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fill();
+
+      roundRect(ctx, -playerW/2, -playerH/2, playerW, playerH, 12);
+      ctx.fillStyle = PALETTE.player;
+      ctx.fill();
+
+      roundRect(ctx, -playerW/2, playerH*0.05, playerW, playerH*0.45, 12);
+      ctx.fillStyle = PALETTE.playerDark;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, -playerH/2 - 10, 14, 0, Math.PI*2);
+      ctx.fillStyle = '#f5cfa0';
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  function loop(now){
+    const dt = Math.min(33, now - lastTime);
+    lastTime = now;
+    update(dt);
+    draw();
+    if (running){
+      animFrame = requestAnimationFrame(loop);
+    }
+  }
+
+  draw();
+  renderMainMenu();
+
+})();
+</script>
+</body>
+</html>
